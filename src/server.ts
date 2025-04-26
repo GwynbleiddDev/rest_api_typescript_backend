@@ -5,19 +5,32 @@ import morgan from 'morgan'
 import swaggerUi from 'swagger-ui-express'
 import swaggerSpec, { swaggerUiOptions } from './config/swagger'
 import router from './router'
-import db from './config/db'
+import db, { connectWithRetry } from './config/db'
 
-// Conectar db
+// Connect to database with retry logic
 export async function connectDB() {
   try {
-    await db.authenticate()
-    db.sync()
-    // console.log(colors.blue.bold('Conexion exitosa'))
+    console.log(colors.yellow.bold('Attempting to connect to database...'));
+    
+    // Use the retry logic to connect to the database
+    const connected = await connectWithRetry(5);
+    
+    if (connected) {
+      // Sync database models
+      await db.sync();
+      console.log(colors.green.bold('Database models synchronized successfully'));
+    } else {
+      console.log(colors.red.bold('Failed to connect to database after multiple attempts'));
+      console.log(colors.yellow('API will start, but database functionality may be limited'));
+    }
   } catch (error) {
-    // console.log(error)
-    console.log(colors.red.bold('Hubo un error al conectar a la DB'))
+    console.log(colors.red.bold('Error during database connection:'));
+    console.error(colors.red(error.message));
+    console.log(colors.yellow('API will start, but database functionality may be limited'));
   }
 }
+
+// Connect to database when server starts up
 connectDB();
 
 
